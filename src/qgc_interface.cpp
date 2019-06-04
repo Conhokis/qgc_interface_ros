@@ -3,6 +3,7 @@
 #include <sensor_msgs/Imu.h>
 #include <stdint.h>
 #include <iostream>
+#include <qgc_interface/Errors.h>
 
 //my_libs
 #include "commUtils.h"
@@ -33,16 +34,16 @@ enum events {
 
 double starting_latitude = 0, starting_longitude = 0, starting_altitude = 0, starting_yaw = 0;
 
-uint8_t nav_count = 5;
+uint8_t nav_count = 20;
 void navSatFixCallback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
 	//Codigo para ver o estado vai aqui
     switch(state) {
     	case INIT_GPS:	
     		if(nav_count == 0) { 
     			event = GPS_STARTED;
-    			starting_latitude = starting_latitude / 5;
-    			starting_longitude = starting_longitude / 5;
-    			starting_altitude = starting_altitude / 5;
+    			starting_latitude = starting_latitude / 20;
+    			starting_longitude = starting_longitude / 20;
+    			starting_altitude = starting_altitude / 20;
     		}
     		else {
     			starting_latitude += msg->latitude;
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "qgc_node");
 	ros::NodeHandle n("~");
-	ros::Rate loop_rate(1000);
+	ros::Rate loop_rate(100);
 
 	//TODO: Criar o subscriber para 
 
@@ -81,6 +82,7 @@ int main(int argc, char **argv)
 	state = INIT_GPS;
 	ros::Subscriber sub_nav = n.subscribe("/fix", 10, navSatFixCallback);
 	ros::Subscriber sub_fix = n.subscribe("/imu_bosch/data", 10, ImuCallback);
+	ros::Publisher pub_errors = n.advertise<qgc_interface::Errors>("/errors", 10);
 
 	std::cout << "Trying to connect to GPS..." << std::endl;
 	tf2_ros::Buffer tfBuffer;
@@ -88,6 +90,9 @@ int main(int argc, char **argv)
   	geometry_msgs::TransformStamped transformStamped;
   	Waypoint current_waypoint;
 	bool qgcIsConnected;
+	qgc_interface::Errors errors_msg;
+	errors_msg.distance_error = 0;
+	errors_msg.angle_error = 0;
 	while(ros::ok()) {
 		ros::spinOnce();
 		//Main
@@ -150,12 +155,16 @@ int main(int argc, char **argv)
 						if(mission.hasWaypoints()) {
 							current_waypoint = mission.getNextWaypoint();
 							goalToError->updateErrors(current_waypoint.lat, current_waypoint.lon, transformStamped);
+							errors_msg.distance_error = goalToError->getDistanceError();
+							errors_msg.angle_error = goalToError->getAngleError();
 
 							if(goalToError->getDistanceError() < current_waypoint.acceptanceRadius) {
 								commonUtils.waypoint_cleared(current_waypoint.seq);
 								mission.clearWaypoint(current_waypoint.seq);
 								std::cout << "Mission Completed!" << std::endl;
 								std::cout << mission.hasWaypoints() << std::endl;
+								errors_msg.distance_error = 0;
+								errors_msg.angle_error = 0;
 							}
 						}
 
@@ -178,12 +187,14 @@ int main(int argc, char **argv)
 
 					default:
 						//Enviar erro para a missão
+						errors_msg.distance_error = 0;
+						errors_msg.angle_error = 0;
 					break;
 				}
 			break;
 		}
 
-
+		pub_errors.publish(errors_msg);
 		loop_rate.sleep();
 	}
 
