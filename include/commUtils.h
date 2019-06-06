@@ -30,6 +30,8 @@ public:
 	void handle_command_long(uint8_t (&buf)[BUFFER_LENGTH], mavlink_message_t &msg, int sock, sockaddr_in &gcAddr, mavlink_message_t &rcvMsg);
 	//Sends GPS data to QGC
 	void sendGPS_QGC(uint8_t (&buf)[BUFFER_LENGTH], mavlink_message_t &msg, int sock, sockaddr_in &gcAddr);
+	//Updates yaw of the vehicle
+	void sendYaw_QGC(uint8_t (&buf)[BUFFER_LENGTH], mavlink_message_t &msg, int sock, sockaddr_in &gcAddr);
 	
 	//Handles mission count which starts the download from QGC
 	void handle_mission_count(uint8_t (&buf)[BUFFER_LENGTH], mavlink_message_t &msg, int sock, sockaddr_in &gcAddr, mavlink_message_t &rcvMsg);
@@ -67,7 +69,7 @@ public:
 	//Indicates connection status, returns true if it has received a QGC heartbeat in the last 3 seconds
 	bool getConnection();
 	//Updates latitude and longitude of the vehicle
-	void setLatLon(float new_lat, float new_lon);
+	void setLatLonYaw(float new_lat, float new_lon, float new_yaw);
 	//Sends an alert to be displayed in QGC, HAS A MAXIMUM OF 49 CHARACTERS
 	void send_alert(string message);
 	//When mission item is cleared, updates QGC
@@ -83,6 +85,8 @@ private:
 	uint32_t lon;
 	//Next Waypoint to download
 	uint16_t toTransfer;
+	//Yaw
+	float yaw;
 	
 	//Message buffer
 	vector <string> alerts;

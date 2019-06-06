@@ -44,6 +44,10 @@ double GoalToError::getCurrentLongitude() {
 	return current_longitude;
 }
 
+float GoalToError::getCurrentYaw() {
+	return current_yaw;
+}
+
 double GoalToError::quaternionToYaw(geometry_msgs::Quaternion quat) {
  	double siny_cosp = +2.0 * (quat.w * quat.z + quat.x * quat.y);
  	double cosy_cosp = +1.0 - 2.0 * (quat.y * quat.y + quat.z * quat.z);
@@ -59,8 +63,8 @@ void GoalToError::updateErrors(double latitude_goal, double longitude_goal, geom
 	double y_goal;
 	latLonToXY(latitude_goal, longitude_goal, &x_goal, &y_goal);
 
-	double x_current = x_start + current_translation.x * cos(-theta_start) - current_translation.y * sin(-theta_start);
- 	double y_current = y_start + current_translation.y * cos(-theta_start) + current_translation.x * sin(-theta_start);
+	double x_current = x_start + (current_translation.x * cos(theta_start) - current_translation.y * sin(theta_start));
+ 	double y_current = y_start + (current_translation.y * cos(theta_start) + current_translation.x * sin(theta_start));
 
  	double theta_goal = atan2(y_goal - y_current, x_goal - x_current);
  	double tf_yaw= quaternionToYaw(current_quat);
@@ -71,9 +75,10 @@ void GoalToError::updateErrors(double latitude_goal, double longitude_goal, geom
 
 void GoalToError::updatePosition(geometry_msgs::TransformStamped current_tf) {
 	geometry_msgs::Vector3 current_translation = current_tf.transform.translation;
+	geometry_msgs::Quaternion current_quat = current_tf.transform.rotation;
 
-	double x_current = x_start + current_translation.x * cos(-theta_start) - current_translation.y * sin(-theta_start);
- 	double y_current = y_start + current_translation.y * cos(-theta_start) + current_translation.x * sin(-theta_start);
+	double x_current = x_start + (current_translation.x * cos(theta_start) - current_translation.y * sin(theta_start));
+ 	double y_current = y_start + (current_translation.y * cos(theta_start) + current_translation.x * sin(theta_start));
 
  	geodesy::UTMPoint utm_pt(x_current, y_current, altitude, zone, band);
  	geographic_msgs::GeoPoint geo_pt;
@@ -81,4 +86,5 @@ void GoalToError::updatePosition(geometry_msgs::TransformStamped current_tf) {
 
  	current_latitude = geo_pt.latitude;
  	current_longitude = geo_pt.longitude;
+ 	current_yaw = quaternionToYaw(current_quat) + theta_start - (M_PI/2);
 }

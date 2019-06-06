@@ -140,6 +140,7 @@ void* connectionThread(void* argument) {
 			}
 
 			comm->sendGPS_QGC(buf, msg, sock, gcAddr);
+			comm->sendYaw_QGC(buf, msg, sock, gcAddr);
 		}
 
 		comm->checkDownloadTimeout();
@@ -409,11 +410,6 @@ void commUtils::handle_mission_count(uint8_t (&buf)[BUFFER_LENGTH], mavlink_mess
 }
 
 void commUtils::sendGPS_QGC(uint8_t (&buf)[BUFFER_LENGTH], mavlink_message_t &msg, int sock, sockaddr_in &gcAddr) {
-	
-
-	//Send GPS status
-	//
-
 	//Send GPS information
 	//altitude = 30m = 30000mm
 	mavlink_msg_global_position_int_pack(1, 1, &msg, (microsSinceEpoch()/1000), lat, lon, 50000, 50000, 0, 0, 0, UINT16_MAX);
@@ -421,7 +417,13 @@ void commUtils::sendGPS_QGC(uint8_t (&buf)[BUFFER_LENGTH], mavlink_message_t &ms
 	sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 }
 
-void commUtils::setLatLon(float new_lat, float new_lon) {
+void commUtils::sendYaw_QGC(uint8_t (&buf)[BUFFER_LENGTH], mavlink_message_t &msg, int sock, sockaddr_in &gcAddr) {
+	mavlink_msg_attitude_pack(1, 1, &msg, (microsSinceEpoch()/1000), 0, 0, yaw, 0, 0, 0);
+	int len = mavlink_msg_to_send_buffer(buf, &msg);
+	sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+}
+
+void commUtils::setLatLonYaw(float new_lat, float new_lon, float new_yaw) {
 
 	//Floating point to fixed point conversion
 	uint32_t int_lat = ((uint32_t) std::abs(new_lat)) * 10000000L;
@@ -434,6 +436,7 @@ void commUtils::setLatLon(float new_lat, float new_lon) {
 
 	lat = int_lat;
 	lon = int_lon;
+	yaw = new_yaw;
 }
 
 void commUtils::setConnectionState(bool state) {

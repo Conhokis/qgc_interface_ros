@@ -34,23 +34,31 @@ enum events {
 
 double starting_latitude = 0, starting_longitude = 0, starting_altitude = 0, starting_yaw = 0;
 
-uint8_t nav_count = 20;
 void navSatFixCallback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
 	//Codigo para ver o estado vai aqui
+	static int8_t nav_count = 20;
+	static bool fixed = false;
     switch(state) {
-    	case INIT_GPS:	
+    	case INIT_GPS:
+    	if(msg->status.status == 0 && !fixed) {
     		if(nav_count == 0) { 
     			event = GPS_STARTED;
     			starting_latitude = starting_latitude / 20;
     			starting_longitude = starting_longitude / 20;
     			starting_altitude = starting_altitude / 20;
+    			fixed = true;
     		}
     		else {
     			starting_latitude += msg->latitude;
     			starting_longitude += msg->longitude;
-    			std::cout << "latitude: " << msg->latitude << std::endl;
     			nav_count--;
     		}
+    	}
+    	break;
+
+    	case OK_STATE:
+    		starting_latitude = msg->latitude;
+    		starting_longitude = msg->longitude;
     	break;
     }
 }
@@ -102,7 +110,7 @@ int main(int argc, char **argv)
  		}
 
 		catch (tf2::TransformException &ex) {
-   			ROS_WARN("%s",ex.what());
+   			//ROS_WARN("%s",ex.what());
    			continue;
  		}
 
@@ -135,7 +143,7 @@ int main(int argc, char **argv)
 			break;
 
 			case OK_STATE:
-				if(!qgcIsConnected) event = QGC_ERROR;				//Fazer o outro if do gps depois
+				if(!qgcIsConnected) event = QGC_ERROR;	//Fazer o outro if do gps depois
 
 				switch(event) {
 					case QGC_ERROR:
@@ -151,7 +159,8 @@ int main(int argc, char **argv)
 					default:
 						//Codigo a fazer default na main
 						goalToError->updatePosition(transformStamped);
-						commonUtils.setLatLon(goalToError->getCurrentLatitude(), goalToError->getCurrentLongitude());
+						commonUtils.setLatLonYaw(goalToError->getCurrentLatitude(), goalToError->getCurrentLongitude(), goalToError->getCurrentYaw());
+						//commonUtils.setLatLon(starting_latitude, starting_longitude);
 						if(mission.hasWaypoints()) {
 							current_waypoint = mission.getNextWaypoint();
 							goalToError->updateErrors(current_waypoint.lat, current_waypoint.lon, transformStamped);
@@ -169,7 +178,7 @@ int main(int argc, char **argv)
 						}
 
 						else { //NO MISSION
-							std::cout << "NO MISSION" << std::endl;
+							//std::cout << "NO MISSION" << std::endl;
 						}
 						
 					break;
@@ -189,6 +198,8 @@ int main(int argc, char **argv)
 						//Enviar erro para a missão
 						errors_msg.distance_error = 0;
 						errors_msg.angle_error = 0;
+
+						if(qgcIsConnected) event = ERROR_RECOVERED;
 					break;
 				}
 			break;

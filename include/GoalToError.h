@@ -10,11 +10,13 @@ public:
 	double getAngleError();
 	double getCurrentLatitude();
 	double getCurrentLongitude();
+	float getCurrentYaw();
 
 private:
 	double x_start, y_start, theta_start, altitude, zone, band;
 	double distance_error, angle_error;
 	double current_latitude, current_longitude;
+	float current_yaw;
 
 	void latLonToXY(double latitude, double longitude, double* x_return, double* y_return);
 	double degreesToRadians(double degrees);
