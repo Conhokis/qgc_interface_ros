@@ -71,6 +71,9 @@ void GoalToError::updateErrors(double latitude_goal, double longitude_goal, geom
 
  	distance_error = sqrt(pow((x_goal - x_current),2.0) + pow((y_goal - y_current),2.0));
  	angle_error = theta_goal - (tf_yaw + theta_start);
+
+	if(angle_error > M_PI) angle_error = angle_error - (2 * M_PI);
+	if(angle_error < -M_PI) angle_error = angle_error + (2 * M_PI);
 }
 
 void GoalToError::updatePosition(geometry_msgs::TransformStamped current_tf) {

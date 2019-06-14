@@ -38,6 +38,7 @@ void navSatFixCallback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
 	//Codigo para ver o estado vai aqui
 	static int8_t nav_count = 20;
 	static bool fixed = false;
+	
     switch(state) {
     	case INIT_GPS:
     	if(msg->status.status == 0 && !fixed) {
@@ -45,7 +46,7 @@ void navSatFixCallback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
     			event = GPS_STARTED;
     			starting_latitude = starting_latitude / 20;
     			starting_longitude = starting_longitude / 20;
-    			starting_altitude = starting_altitude / 20;
+    			starting_altitude = starting_altitude / 20;	
     			fixed = true;
     		}
     		else {
@@ -105,6 +106,8 @@ int main(int argc, char **argv)
 		ros::spinOnce();
 		//Main
 
+		//
+
 		try {
   			transformStamped = tfBuffer.lookupTransform("map", "base_link", ros::Time(0));
  		}
@@ -114,6 +117,7 @@ int main(int argc, char **argv)
    			continue;
  		}
 
+
 		qgcIsConnected = commonUtils.getConnection();
 		//Acrescentar aqui talvez a verificação do GPS
 		switch(state) {
@@ -122,7 +126,7 @@ int main(int argc, char **argv)
 					case GPS_STARTED:
 						state = INIT_MAVLINK;
 						commonUtils.init();
-						goalToError = new GoalToError(starting_latitude, starting_longitude, starting_altitude, starting_yaw);
+						goalToError = new GoalToError(41.17840553, -8.59395791, starting_altitude, starting_yaw);
 						std::cout << std::setprecision(15) << "Initial position set: " << starting_latitude << " " << starting_longitude << std::endl;
 						std::cout << "starting_yaw : " << (starting_yaw * 180 / M_PI) << std::endl;
 					break;
@@ -160,13 +164,12 @@ int main(int argc, char **argv)
 						//Codigo a fazer default na main
 						goalToError->updatePosition(transformStamped);
 						commonUtils.setLatLonYaw(goalToError->getCurrentLatitude(), goalToError->getCurrentLongitude(), goalToError->getCurrentYaw());
-						//commonUtils.setLatLon(starting_latitude, starting_longitude);
+						//commonUtils.setLatLonYaw(starting_latitude, starting_longitude, 0);
 						if(mission.hasWaypoints()) {
 							current_waypoint = mission.getNextWaypoint();
 							goalToError->updateErrors(current_waypoint.lat, current_waypoint.lon, transformStamped);
 							errors_msg.distance_error = goalToError->getDistanceError();
 							errors_msg.angle_error = goalToError->getAngleError();
-
 							if(goalToError->getDistanceError() < current_waypoint.acceptanceRadius) {
 								commonUtils.waypoint_cleared(current_waypoint.seq);
 								mission.clearWaypoint(current_waypoint.seq);
@@ -174,6 +177,7 @@ int main(int argc, char **argv)
 								std::cout << mission.hasWaypoints() << std::endl;
 								errors_msg.distance_error = 0;
 								errors_msg.angle_error = 0;
+								
 							}
 						}
 
